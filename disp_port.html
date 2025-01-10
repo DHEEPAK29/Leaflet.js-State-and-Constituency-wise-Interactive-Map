@@ -19,7 +19,7 @@
     }).addTo(map);
 
     // Load GeoJSON data
-    L.geoJSON.ajax('your-geojson-file-path.json', {
+    L.geoJSON.ajax('geojsonSource.json', {
       onEachFeature: function (feature, layer) {
         layer.on('click', function () {
           alert('District: ' + feature.properties.districtName);
