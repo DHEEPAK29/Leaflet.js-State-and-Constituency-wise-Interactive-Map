@@ -1,2 +1,3 @@
 # Leaflet.js-State-and-Constituency-wise-Interactive-Map
-Interactive Political Map
+Interactive Political Map application with Leadlet.js and GeoJSON. 
+
