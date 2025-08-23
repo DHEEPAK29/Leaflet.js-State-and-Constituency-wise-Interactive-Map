@@ -10,6 +10,7 @@
   <script src="https://unpkg.com/leaflet-ajax/dist/leaflet.ajax.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <style>
     .container {
       position: fixed;
@@ -240,10 +241,56 @@
     map.on(L.Draw.Event.CREATED, function (event) {
       var layer = event.layer;
       drawnItems.addLayer(layer);
+
+      if (currentMode === 'draw') {
+        var drawnGeoJSON = layer.toGeoJSON();
+        var intersectedFeatures = [];
+
+        geojsonLayer.eachLayer(function (l) {
+          var featureGeoJSON = l.toGeoJSON();
+
+          // Check if drawn shape contains or intersects with the feature
+          try {
+            var isInside = false;
+            if (drawnGeoJSON.geometry.type === 'Point') {
+              isInside = turf.booleanPointInPolygon(drawnGeoJSON, featureGeoJSON);
+            } else {
+              var intersection = turf.intersect(drawnGeoJSON, featureGeoJSON);
+              if (intersection) isInside = true;
+            }
+
+            if (isInside) {
+              intersectedFeatures.push(l.feature.properties);
+              // Visually highlight matched features
+              l.setStyle({
+                color: 'red',
+                weight: 3,
+                fillOpacity: 0.5
+              });
+            }
+          } catch (e) {
+            console.error("Turf error:", e);
+          }
+        });
+
+        // Display info for all intersected features
+        if (intersectedFeatures.length > 0) {
+          var infoHTML = `<strong>Found ${intersectedFeatures.length} features:</strong><hr>`;
+          intersectedFeatures.forEach((props, index) => {
+            infoHTML += `<div style="margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px;">
+              <strong>#${index + 1}:</strong> ${props.districtName || props.PC_NAME || 'Unknown'}<br>
+              ${Object.entries(props).map(([k, v]) => `<code>${k}</code>: ${v}`).join('<br>')}
+            </div>`;
+          });
+          document.getElementById('selection-info').innerHTML = infoHTML;
+        } else {
+          document.getElementById('selection-info').innerHTML = "No features found within the drawn area.";
+        }
+      }
     });
 
-    // Load GeoJSON data
-    var geojsonLayer = L.geoJSON.ajax('geojsonSource.json', {
+    // Load GeoJSON data from the backend API
+    var geojsonLayer = L.geoJSON.ajax('/api/geojson', {
       onEachFeature: function (feature, layer) {
         layer.on('click', function (e) {
           if (currentMode === 'select') {
